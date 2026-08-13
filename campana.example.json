@@ -1,0 +1,24 @@
+{
+  "excel": {
+    "ruta": "prueba.xlsx",
+    "hoja": null,
+    "columna_nombre": "Nombre",
+    "columna_telefono": "Teléfono"
+  },
+  "plantilla": {
+    "nombre": "bonos_popsy_v7",
+    "idioma": "es",
+    "parametros_cuerpo": [
+      { "origen": "nombre_normalizado" }
+    ],
+    "imagen_cabecera": null,
+    "parametro_boton_url": { "origen": "fijo", "valor": "PRUEBA123" }
+  },
+  "envio": {
+    "segundos_entre_mensajes": 5,
+    "jitter": 0.2,
+    "tope_diario": 900,
+    "nombre_por_defecto": "Hola",
+    "ruta_log": "logs/envios.csv"
+  }
+}

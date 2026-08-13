@@ -1,0 +1,45 @@
+# ==========================================================
+#  REPOSITORIO PUBLICO - nada de esto se sube. Nunca.
+# ==========================================================
+
+# --- Secretos ---
+.env
+.env.*
+!.env.example
+*.token
+*secret*
+*credential*
+
+# --- IDs privados de Meta ---
+DATOS-META.md
+
+# --- Datos personales de contactos (Ley 1581 / habeas data) ---
+*.xlsx
+*.xls
+*.csv
+*.tsv
+*.json
+!campana.example.json
+!package.json
+
+# --- Resultados de envios (contienen telefonos) ---
+logs/
+descartes*
+envios*
+*.log
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+
+# --- Editores / SO ---
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
