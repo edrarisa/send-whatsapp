@@ -49,6 +49,33 @@ class Registro:
                 if fila.get("estado") == ENVIADO and fila.get("telefono")
             }
 
+    def resultados(self):
+        """El ultimo resultado de cada telefono: {telefono: (estado, timestamp, error)}.
+
+        Sirve para pintar el estado en el Excel. Si un numero se intento varias
+        veces, gana el intento mas reciente (el ultimo del archivo).
+        """
+        if not os.path.exists(self.ruta):
+            return {}
+
+        resultados = {}
+        with open(self.ruta, encoding="utf-8", newline="") as archivo:
+            for fila in csv.DictReader(archivo):
+                telefono = fila.get("telefono")
+                if not telefono:
+                    continue
+                error = " ".join(
+                    parte for parte in (fila.get("codigo_error"), fila.get("mensaje_error"))
+                    if parte
+                )
+                resultados[telefono] = (
+                    fila.get("estado", ""),
+                    fila.get("timestamp", ""),
+                    error,
+                )
+
+        return resultados
+
     def enviados_ultimas_24h(self):
         """Cuantos mensajes salieron bien en la ventana movil de 24 horas.
 

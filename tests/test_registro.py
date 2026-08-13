@@ -122,6 +122,33 @@ def test_los_fallos_no_consumen_cupo(tmp_path):
     assert Registro(ruta).enviados_ultimas_24h() == 1
 
 
+def test_resultados_devuelve_el_estado_de_cada_telefono(tmp_path):
+    ruta = str(tmp_path / "envios.csv")
+    registro = Registro(ruta)
+    registro.anotar("571", "Ana", "enviado", message_id="wamid.A")
+    registro.anotar("572", "Luis", "fallo", codigo_error="131026",
+                    mensaje_error="Recipient not found")
+    registro.cerrar()
+
+    resultados = Registro(ruta).resultados()
+
+    assert resultados["571"][0] == "enviado"
+    assert resultados["571"][1].startswith("20")          # el timestamp
+    assert resultados["572"][0] == "fallo"
+    assert "131026" in resultados["572"][2]
+    assert "Recipient not found" in resultados["572"][2]
+
+
+def test_resultados_se_queda_con_el_intento_mas_reciente(tmp_path):
+    ruta = str(tmp_path / "envios.csv")
+    registro = Registro(ruta)
+    registro.anotar("571", "Ana", "fallo", codigo_error="500", mensaje_error="server")
+    registro.anotar("571", "Ana", "enviado", message_id="wamid.A")
+    registro.cerrar()
+
+    assert Registro(ruta).resultados()["571"][0] == "enviado"
+
+
 def test_una_fila_con_timestamp_corrupto_no_tumba_el_conteo(tmp_path):
     ruta = str(tmp_path / "envios.csv")
     ahora = datetime.now(timezone.utc)

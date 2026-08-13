@@ -19,6 +19,7 @@ DATOS-META.md
 *.csv
 *.tsv
 *.json
+*.bak
 !campana.example.json
 !package.json
 

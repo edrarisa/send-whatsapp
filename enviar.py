@@ -17,6 +17,7 @@ from dotenv import dotenv_values
 
 from src.config import ConfigInvalida, cargar_config
 from src.contactos import leer_contactos
+from src.marcado import ExcelBloqueado, marcar_excel
 from src.registro import ENVIADO, FALLO, Registro
 from src.whatsapp import TokenInvalido, construir_payload, enviar_con_reintentos
 
@@ -31,6 +32,8 @@ def parsear_argumentos(argv=None):
                         help="Envia solo a los primeros N contactos")
     parser.add_argument("--solo", default=None,
                         help="Envia solo a este numero (formato 57XXXXXXXXXX)")
+    parser.add_argument("--marcar", action="store_true",
+                        help="Solo actualiza las columnas de estado del Excel, no envia")
     return parser.parse_args(argv)
 
 
@@ -62,6 +65,10 @@ def main(argv=None):
         print("  Motivos:", _contar_motivos(descartes))
 
     registro = Registro(config.envio.ruta_log)
+
+    if args.marcar:
+        return _marcar(config, registro)
+
     ya_enviados = registro.telefonos_enviados()
 
     pendientes = [c for c in validos if c.telefono not in ya_enviados]
@@ -154,7 +161,33 @@ def _enviar(pendientes, config, registro):
 
     print(f"\nEnviados: {enviados}   Fallidos: {fallidos}")
     print(f"Detalle completo en: {config.envio.ruta_log}")
+
+    # El Excel se marca al final, nunca durante el envio: guardar un .xlsx
+    # reescribe el archivo entero y un corte a medias lo dejaria corrupto.
+    _marcar(config, registro)
+
     return 0 if fallidos == 0 else 2
+
+
+def _marcar(config, registro):
+    """Pinta el estado de cada contacto en el Excel. Nunca aborta la corrida."""
+    try:
+        marcadas = marcar_excel(
+            config.excel.ruta,
+            registro.resultados(),
+            hoja=config.excel.hoja,
+            columna_telefono=config.excel.columna_telefono,
+        )
+        print(f"Excel actualizado: {marcadas} filas marcadas en {config.excel.ruta}")
+        print(f"  (copia de seguridad en {config.excel.ruta}.bak)")
+        return 0
+    except ExcelBloqueado as error:
+        print(f"\nAVISO: {error}")
+        return 3
+    except (ValueError, OSError) as error:
+        print(f"\nAVISO: no pude marcar el Excel: {error}")
+        print(f"Los envios estan guardados en {config.envio.ruta_log}, no se perdio nada.")
+        return 3
 
 
 def _pausa(envio):
