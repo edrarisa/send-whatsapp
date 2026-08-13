@@ -24,7 +24,31 @@ python enviar.py --dry-run                  # simula, no envia nada
 python enviar.py --solo 57XXXXXXXXXX        # un solo numero, para probar
 python enviar.py --limite 5                 # solo los primeros 5
 python enviar.py                            # corrida completa
+python enviar.py --marcar                   # solo refresca el estado en el Excel
 ```
+
+## Convención de los archivos de campaña
+
+⚠️ **`campana.json` es siempre la campaña activa.** `python enviar.py` sin
+argumentos usa ese archivo, así que lo que esté ahí es lo que sale.
+
+Al empezar una campaña nueva:
+
+1. Renombra la anterior a `campana-<nombre>.json` para conservarla
+2. Escribe la nueva en `campana.json`
+3. Dale a cada campaña su propio `envio.ruta_log`, para que los envíos de una no
+   tapen los de otra
+
+Una campaña archivada se puede volver a correr con
+`python enviar.py --config campana-<nombre>.json`.
+
+**Antes de cada corrida, verifica cuál plantilla vas a mandar:**
+
+```bash
+python enviar.py --dry-run
+```
+
+La segunda línea de la salida dice el nombre exacto de la plantilla. Míralo.
 
 ## Importante
 
