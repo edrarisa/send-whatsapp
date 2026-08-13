@@ -77,10 +77,20 @@ def main(argv=None):
     if args.limite is not None:
         pendientes = pendientes[: args.limite]
 
-    if len(pendientes) > config.envio.tope_diario:
-        print(f"  Tope diario de {config.envio.tope_diario}: se recortan "
-              f"{len(pendientes) - config.envio.tope_diario} para otra corrida")
-        pendientes = pendientes[: config.envio.tope_diario]
+    # El tope es sobre una ventana movil de 24h, no sobre esta corrida: si el
+    # script ya se ejecuto hoy, lo que envio entonces sigue consumiendo cupo.
+    if not args.dry_run:
+        gastado = registro.enviados_ultimas_24h()
+        cupo = config.envio.tope_diario - gastado
+        if gastado:
+            print(f"  Cupo 24h: {gastado} de {config.envio.tope_diario} ya usados, quedan {cupo}")
+        if cupo <= 0:
+            print(f"\nTope de {config.envio.tope_diario} mensajes / 24h alcanzado.")
+            print("Vuelve a correrlo mas tarde y seguira con los que faltan.")
+            return 0
+        if len(pendientes) > cupo:
+            print(f"  Se recortan {len(pendientes) - cupo} para la proxima corrida")
+            pendientes = pendientes[:cupo]
 
     print(f"\nPlantilla: {config.plantilla.nombre} ({config.plantilla.idioma})")
     print(f"A enviar ahora: {len(pendientes)}")

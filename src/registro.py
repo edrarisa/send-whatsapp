@@ -2,7 +2,11 @@
 
 import csv
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+
+# Meta cuenta su limite sobre una ventana movil de 24 horas, no sobre el dia
+# calendario ni sobre "una corrida del script".
+VENTANA = timedelta(hours=24)
 
 CAMPOS = [
     "timestamp",
@@ -45,6 +49,30 @@ class Registro:
                 if fila.get("estado") == ENVIADO and fila.get("telefono")
             }
 
+    def enviados_ultimas_24h(self):
+        """Cuantos mensajes salieron bien en la ventana movil de 24 horas.
+
+        Sirve para no pasarse del limite de Meta cuando el script se corre
+        varias veces el mismo dia (cron, reintentos manuales, dos terminales).
+        """
+        if not os.path.exists(self.ruta):
+            return 0
+
+        corte = datetime.now(timezone.utc) - VENTANA
+        total = 0
+
+        with open(self.ruta, encoding="utf-8", newline="") as archivo:
+            for fila in csv.DictReader(archivo):
+                if fila.get("estado") != ENVIADO:
+                    continue
+                momento = _leer_momento(fila.get("timestamp"))
+                # Una fila con fecha ilegible no debe tumbar el conteo, pero
+                # tampoco puede colarse gratis: la ignoramos y seguimos.
+                if momento is not None and momento >= corte:
+                    total += 1
+
+        return total
+
     def anotar(self, telefono, nombre, estado, message_id="", codigo_error="",
                mensaje_error=""):
         self._abrir()
@@ -76,3 +104,17 @@ class Registro:
         if hay_que_escribir_encabezado:
             self._escritor.writeheader()
             self._archivo.flush()
+
+
+def _leer_momento(texto):
+    """Convierte el timestamp del CSV en datetime. Devuelve None si no se puede."""
+    if not texto:
+        return None
+    try:
+        momento = datetime.fromisoformat(texto)
+    except ValueError:
+        return None
+    # Un log viejo pudo quedar sin zona horaria: lo tratamos como UTC.
+    if momento.tzinfo is None:
+        return momento.replace(tzinfo=timezone.utc)
+    return momento

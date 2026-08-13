@@ -35,6 +35,35 @@ python enviar.py                            # corrida completa
 - Cada conversación de marketing **se cobra**.
 - Un número nuevo arranca limitado a 1.000 conversaciones únicas cada 24 horas.
 
+## Reanudar un envío a medias
+
+El script escribe cada resultado en el CSV de `envio.ruta_log` **en el momento**,
+y al arrancar salta a quien ya figura como `enviado`. Eso significa:
+
+- Si el proceso se cae en el mensaje 400, lo relanzas y sigue en el 401.
+- Puedes correrlo tantas veces como quieras: nunca envía dos veces al mismo número.
+- El tope se cuenta sobre una **ventana móvil de 24 horas**, no por corrida. Si
+  ya se enviaron 900 hoy, la siguiente ejecución no manda nada y te avisa.
+
+## Desplegar en un servidor
+
+Tres cosas que hay que resolver antes de dejarlo corriendo solo:
+
+**1. El log tiene que sobrevivir a los despliegues.** Por defecto vive en
+`logs/envios.csv`, dentro del proyecto. Si redespliegas con un `git clone`
+limpio o un contenedor sin volumen, se pierde y **reenvía todo desde cero**.
+Ponlo en una ruta absoluta fuera del repo:
+
+```json
+"envio": { "ruta_log": "/var/lib/send-whatsapp/envios.csv" }
+```
+
+**2. Un solo lugar como fuente de verdad.** Si lo corres en tu máquina *y* en el
+servidor, cada uno lleva su propio CSV y no se enteran del otro. Elige uno.
+
+**3. El `.env` va en el servidor, nunca en git.** Cópialo por SSH o usa las
+variables de entorno del sistema.
+
 ## Qué nunca se sube a git
 
 `.env`, `DATOS-META.md`, cualquier `.xlsx`/`.csv` y la carpeta `logs/`.

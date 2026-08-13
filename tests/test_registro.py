@@ -67,3 +67,67 @@ def test_escribe_el_encabezado_una_sola_vez(tmp_path):
 
     lineas = open(ruta, encoding="utf-8").read().strip().splitlines()
     assert sum(1 for linea in lineas if linea.startswith("timestamp")) == 1
+
+
+# --- Cupo de las ultimas 24 horas -------------------------------------------
+# El limite de Meta es por ventana movil de 24h, no por "corrida". Sin esto,
+# dos ejecuciones el mismo dia se pasan del tope sin darse cuenta.
+
+from datetime import datetime, timedelta, timezone
+
+
+def _escribir_log(ruta, filas):
+    """Escribe un log a mano para poder controlar los timestamps."""
+    with open(ruta, "w", encoding="utf-8", newline="") as archivo:
+        archivo.write("timestamp,telefono,nombre,estado,message_id,codigo_error,mensaje_error\n")
+        for momento, telefono, estado in filas:
+            archivo.write(f"{momento.isoformat()},{telefono},X,{estado},,,\n")
+
+
+def test_sin_log_previo_no_hay_nada_enviado_en_24h(tmp_path):
+    assert Registro(str(tmp_path / "envios.csv")).enviados_ultimas_24h() == 0
+
+
+def test_cuenta_los_enviados_dentro_de_la_ventana(tmp_path):
+    ruta = str(tmp_path / "envios.csv")
+    ahora = datetime.now(timezone.utc)
+    _escribir_log(ruta, [
+        (ahora - timedelta(hours=1), "571", "enviado"),
+        (ahora - timedelta(hours=23), "572", "enviado"),
+    ])
+
+    assert Registro(ruta).enviados_ultimas_24h() == 2
+
+
+def test_ignora_los_enviados_hace_mas_de_24_horas(tmp_path):
+    ruta = str(tmp_path / "envios.csv")
+    ahora = datetime.now(timezone.utc)
+    _escribir_log(ruta, [
+        (ahora - timedelta(hours=25), "571", "enviado"),
+        (ahora - timedelta(days=3), "572", "enviado"),
+        (ahora - timedelta(hours=2), "573", "enviado"),
+    ])
+
+    assert Registro(ruta).enviados_ultimas_24h() == 1
+
+
+def test_los_fallos_no_consumen_cupo(tmp_path):
+    ruta = str(tmp_path / "envios.csv")
+    ahora = datetime.now(timezone.utc)
+    _escribir_log(ruta, [
+        (ahora - timedelta(minutes=5), "571", "enviado"),
+        (ahora - timedelta(minutes=4), "572", "fallo"),
+    ])
+
+    assert Registro(ruta).enviados_ultimas_24h() == 1
+
+
+def test_una_fila_con_timestamp_corrupto_no_tumba_el_conteo(tmp_path):
+    ruta = str(tmp_path / "envios.csv")
+    ahora = datetime.now(timezone.utc)
+    with open(ruta, "w", encoding="utf-8", newline="") as archivo:
+        archivo.write("timestamp,telefono,nombre,estado,message_id,codigo_error,mensaje_error\n")
+        archivo.write("basura-no-es-fecha,571,X,enviado,,,\n")
+        archivo.write(f"{(ahora - timedelta(hours=1)).isoformat()},572,X,enviado,,,\n")
+
+    assert Registro(ruta).enviados_ultimas_24h() == 1
