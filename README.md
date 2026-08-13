@@ -35,6 +35,26 @@ python enviar.py                            # corrida completa
 - Cada conversación de marketing **se cobra**.
 - Un número nuevo arranca limitado a 1.000 conversaciones únicas cada 24 horas.
 
+## Plantillas con imagen de cabecera
+
+Si la plantilla lleva imagen, hay que mandarla en **cada** mensaje. Dos formas,
+y el script elige según lo que pongas en `plantilla.imagen_cabecera`:
+
+```json
+"imagen_cabecera": "imagenes/banner.jpg"          // archivo local  -> recomendado
+"imagen_cabecera": "https://tusitio.com/b.jpg"    // URL publica
+```
+
+**Archivo local:** el script lo sube a Meta **una sola vez** al arrancar, y los
+mensajes reutilizan el ID que devuelve. Nada toca tu servidor.
+
+**URL pública:** Meta descarga la imagen en cada mensaje. Con 800 envíos son 800
+descargas contra tu hosting en pocos minutos.
+
+Requisitos: JPG o PNG, máximo 5 MB, proporción 1.91:1 (ideal 1125 × 600 px).
+La imagen que subiste al crear la plantilla es solo la muestra para el revisor
+de Meta; no sirve para enviar.
+
 ## Reanudar un envío a medias
 
 El script escribe cada resultado en el CSV de `envio.ruta_log` **en el momento**,

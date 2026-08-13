@@ -136,12 +136,22 @@ def _leer_plantilla(datos):
 
     parametros = [_leer_parametro(p) for p in datos.get("parametros_cuerpo") or []]
 
+    imagen = datos.get("imagen_cabecera") or None
+    # Si es un archivo local, mejor enterarse ahora que despues de leer 800
+    # contactos y estar a punto de enviar.
+    if imagen and not str(imagen).startswith(("http://", "https://")):
+        if not os.path.exists(imagen):
+            raise ConfigInvalida(
+                f"No encuentro la imagen de cabecera: {imagen}. "
+                "Pon la ruta a un archivo local o una URL publica que empiece con https://"
+            )
+
     boton = datos.get("parametro_boton_url")
     return ConfigPlantilla(
         nombre=nombre,
         idioma=idioma,
         parametros_cuerpo=parametros,
-        imagen_cabecera=datos.get("imagen_cabecera") or None,
+        imagen_cabecera=imagen,
         parametro_boton_url=_leer_parametro(boton) if boton else None,
     )
 

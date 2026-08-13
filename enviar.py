@@ -19,7 +19,14 @@ from src.config import ConfigInvalida, cargar_config
 from src.contactos import leer_contactos
 from src.marcado import ExcelBloqueado, marcar_excel
 from src.registro import ENVIADO, FALLO, Registro
-from src.whatsapp import TokenInvalido, construir_payload, enviar_con_reintentos
+from src.whatsapp import (
+    ImagenNoSubida,
+    TokenInvalido,
+    construir_payload,
+    enviar_con_reintentos,
+    referencia_imagen,
+    subir_imagen,
+)
 
 
 def parsear_argumentos(argv=None):
@@ -115,23 +122,55 @@ def main(argv=None):
 
 def _simular(pendientes, config):
     print("--- DRY RUN: no se envia nada ---\n")
+    imagen = referencia_imagen(config.plantilla.imagen_cabecera)
+    if config.plantilla.imagen_cabecera and imagen is None:
+        imagen = {"id": "<se subiria a Meta al enviar de verdad>"}
     for contacto in pendientes:
-        payload = construir_payload(contacto, config.plantilla)
+        payload = construir_payload(contacto, config.plantilla, imagen=imagen)
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         print()
     print(f"Se habrian enviado {len(pendientes)} mensajes.")
     return 0
 
 
+def _resolver_imagen(sesion, config):
+    """Deja lista la referencia de la imagen de cabecera antes de empezar.
+
+    Una URL se usa tal cual. Un archivo local se sube UNA vez y todos los
+    mensajes reutilizan el ID, en vez de hacer que Meta lo descargue 800 veces.
+    """
+    valor = config.plantilla.imagen_cabecera
+    if not valor:
+        return None
+
+    imagen = referencia_imagen(valor)
+    if imagen:
+        print(f"Imagen de cabecera: URL publica ({valor})")
+        return imagen
+
+    print(f"Subiendo la imagen de cabecera a Meta: {valor}")
+    identificador = subir_imagen(sesion, config.meta, valor)
+    print(f"  subida, ID de medio {identificador}")
+    return {"id": identificador}
+
+
 def _enviar(pendientes, config, registro):
     sesion = requests.Session()
+
+    try:
+        imagen = _resolver_imagen(sesion, config)
+    except ImagenNoSubida as error:
+        print(f"\nERROR CON LA IMAGEN: {error}")
+        print("No se envio ningun mensaje.")
+        return 1
+
     enviados = 0
     fallidos = 0
     total = len(pendientes)
 
     try:
         for indice, contacto in enumerate(pendientes, start=1):
-            payload = construir_payload(contacto, config.plantilla)
+            payload = construir_payload(contacto, config.plantilla, imagen=imagen)
 
             try:
                 resultado = enviar_con_reintentos(sesion, config.meta, payload)

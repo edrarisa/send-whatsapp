@@ -138,8 +138,10 @@ class SesionFalsa:
         self._respuestas = list(respuestas)
         self.llamadas = []
 
-    def post(self, url, json=None, headers=None, timeout=None):
-        self.llamadas.append({"url": url, "json": json, "headers": headers})
+    def post(self, url, json=None, headers=None, timeout=None, data=None, files=None):
+        self.llamadas.append({
+            "url": url, "json": json, "headers": headers, "data": data, "files": files,
+        })
         return self._respuestas.pop(0)
 
 
@@ -209,3 +211,104 @@ def test_un_token_invalido_aborta_todo_el_proceso():
 
     with pytest.raises(TokenInvalido):
         enviar_con_reintentos(sesion, META, {}, intentos=3, espera_inicial=0)
+
+
+# --- Imagen de cabecera ------------------------------------------------------
+# Meta acepta la imagen de dos formas: una URL publica que descarga en CADA
+# mensaje, o un ID de medio que se sube una vez y se reutiliza. Preferimos el
+# ID: 820 mensajes con URL son 820 descargas contra el servidor de origen.
+
+from src.whatsapp import ImagenNoSubida, referencia_imagen, subir_imagen
+
+
+def test_una_url_se_usa_tal_cual_como_link():
+    assert referencia_imagen("https://ejemplo.com/banner.jpg") == {
+        "link": "https://ejemplo.com/banner.jpg"
+    }
+
+
+def test_un_archivo_local_no_es_una_referencia_directa():
+    # Hay que subirlo primero; quien llama se encarga.
+    assert referencia_imagen("banner.jpg") is None
+    assert referencia_imagen(None) is None
+
+
+def test_el_payload_acepta_una_imagen_por_id():
+    plantilla = ConfigPlantilla(
+        nombre="conversatorio_datos_agosto_2026",
+        idioma="es",
+        parametros_cuerpo=[Parametro(origen="nombre_normalizado")],
+        imagen_cabecera="banner.jpg",
+    )
+
+    payload = construir_payload(ANA, plantilla, imagen={"id": "123456"})
+
+    assert payload["template"]["components"][0] == {
+        "type": "header",
+        "parameters": [{"type": "image", "image": {"id": "123456"}}],
+    }
+
+
+def test_subir_imagen_devuelve_el_id_de_meta(tmp_path):
+    archivo = tmp_path / "banner.jpg"
+    archivo.write_bytes(b"\xff\xd8\xff" + b"x" * 100)      # cabecera JPEG falsa
+    sesion = SesionFalsa([RespuestaFalsa(200, {"id": "987654321"})])
+
+    assert subir_imagen(sesion, META, str(archivo)) == "987654321"
+
+
+def test_subir_imagen_apunta_al_endpoint_de_medios(tmp_path):
+    archivo = tmp_path / "banner.jpg"
+    archivo.write_bytes(b"\xff\xd8\xff" + b"x" * 100)
+    sesion = SesionFalsa([RespuestaFalsa(200, {"id": "987654321"})])
+
+    subir_imagen(sesion, META, str(archivo))
+
+    llamada = sesion.llamadas[0]
+    assert llamada["url"] == "https://graph.facebook.com/v21.0/111222333/media"
+    assert llamada["data"] == {"messaging_product": "whatsapp"}
+    assert llamada["headers"]["Authorization"] == "Bearer EAAtoken"
+    assert llamada["json"] is None                      # va como multipart, no JSON
+
+
+def test_subir_imagen_avisa_si_el_archivo_no_existe(tmp_path):
+    sesion = SesionFalsa([])
+
+    with pytest.raises(ImagenNoSubida) as error:
+        subir_imagen(sesion, META, str(tmp_path / "no-existe.jpg"))
+
+    assert "no-existe.jpg" in str(error.value)
+
+
+def test_subir_imagen_rechaza_formatos_que_meta_no_acepta(tmp_path):
+    archivo = tmp_path / "banner.bmp"
+    archivo.write_bytes(b"BM" + b"x" * 100)
+    sesion = SesionFalsa([])
+
+    with pytest.raises(ImagenNoSubida) as error:
+        subir_imagen(sesion, META, str(archivo))
+
+    assert ".bmp" in str(error.value)
+
+
+def test_subir_imagen_rechaza_archivos_de_mas_de_5_mb(tmp_path):
+    archivo = tmp_path / "enorme.jpg"
+    archivo.write_bytes(b"\xff\xd8\xff" + b"x" * (5 * 1024 * 1024))
+    sesion = SesionFalsa([])
+
+    with pytest.raises(ImagenNoSubida) as error:
+        subir_imagen(sesion, META, str(archivo))
+
+    assert "5 MB" in str(error.value)
+
+
+def test_subir_imagen_reporta_el_error_de_meta(tmp_path):
+    archivo = tmp_path / "banner.jpg"
+    archivo.write_bytes(b"\xff\xd8\xff" + b"x" * 100)
+    cuerpo = {"error": {"message": "Invalid file type", "code": 100}}
+    sesion = SesionFalsa([RespuestaFalsa(400, cuerpo)])
+
+    with pytest.raises(ImagenNoSubida) as error:
+        subir_imagen(sesion, META, str(archivo))
+
+    assert "Invalid file type" in str(error.value)

@@ -78,6 +78,33 @@ def test_falla_claro_si_un_parametro_tiene_un_origen_desconocido(tmp_path):
     assert "inventado" in str(error.value)
 
 
+def test_falla_claro_si_la_imagen_de_cabecera_no_existe(tmp_path):
+    (tmp_path / "prueba.xlsx").write_bytes(b"")
+    datos = {
+        "excel": {"ruta": str(tmp_path / "prueba.xlsx")},
+        "plantilla": {"nombre": "x", "idioma": "es",
+                      "imagen_cabecera": str(tmp_path / "no-esta.jpg")},
+    }
+
+    with pytest.raises(ConfigInvalida) as error:
+        cargar_config(_escribir(tmp_path, datos), ENTORNO_COMPLETO)
+
+    assert "no-esta.jpg" in str(error.value)
+
+
+def test_una_url_de_imagen_no_se_valida_contra_el_disco(tmp_path):
+    (tmp_path / "prueba.xlsx").write_bytes(b"")
+    datos = {
+        "excel": {"ruta": str(tmp_path / "prueba.xlsx")},
+        "plantilla": {"nombre": "x", "idioma": "es",
+                      "imagen_cabecera": "https://ejemplo.com/banner.jpg"},
+    }
+
+    config = cargar_config(_escribir(tmp_path, datos), ENTORNO_COMPLETO)
+
+    assert config.plantilla.imagen_cabecera == "https://ejemplo.com/banner.jpg"
+
+
 def test_falla_claro_si_un_parametro_de_columna_no_dice_cual(tmp_path):
     (tmp_path / "prueba.xlsx").write_bytes(b"")
     datos = {
