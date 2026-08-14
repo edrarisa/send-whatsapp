@@ -7,14 +7,28 @@ from dataclasses import dataclass, field
 VACIO = "vacio"
 BASURA = "basura"
 NO_ES_MOVIL_CO = "no_es_movil_co"
+LARGO_INVALIDO = "largo_invalido"
 DUPLICADO = "duplicado"
+
+# E.164 permite hasta 15 digitos contando el indicativo de pais. Por abajo, un
+# numero con indicativo baja de 10 digitos solo si esta truncado: los "cortos"
+# que aparecen en las listas suelen ser fijos viejos con un '+' puesto delante.
+LARGO_MINIMO_INTERNACIONAL = 10
+LARGO_MAXIMO_INTERNACIONAL = 15
 
 
 def normalizar_telefono(valor):
-    """Convierte una celda de Excel en un movil colombiano en formato E.164 sin '+'.
+    """Convierte una celda de Excel en un telefono E.164 sin '+'.
 
     Devuelve (telefono, motivo). Si telefono es None, motivo explica por que se
     descarto. Si telefono tiene valor, motivo es "".
+
+    Dos caminos segun lo que traiga la celda:
+
+    - **Con '+'**: ya trae indicativo de pais. Se respeta tal cual, venga de
+      donde venga, y solo se valida el largo.
+    - **Sin '+'**: se asume Colombia, que es lo que exportan los CRM y planillas
+      locales sin formato.
 
     Acepta str o int: en un Excel la misma columna puede venir de las dos formas.
     """
@@ -26,9 +40,17 @@ def normalizar_telefono(valor):
         return None, VACIO
 
     digitos = re.sub(r"\D", "", texto)
+    if not digitos:
+        return None, BASURA
 
-    # Ni un solo digito, o largos imposibles para un telefono.
-    if not digitos or len(digitos) < 7 or len(digitos) > 13:
+    if texto.startswith("+"):
+        if LARGO_MINIMO_INTERNACIONAL <= len(digitos) <= LARGO_MAXIMO_INTERNACIONAL:
+            return digitos, ""
+        # Poner un '+' delante no convierte un fijo de 8 digitos en internacional.
+        return None, LARGO_INVALIDO
+
+    # Sin indicativo: largos imposibles para cualquier telefono.
+    if len(digitos) < 7 or len(digitos) > 13:
         return None, BASURA
 
     # Movil colombiano sin indicativo: 10 digitos que empiezan en 3.

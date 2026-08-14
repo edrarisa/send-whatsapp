@@ -59,6 +59,22 @@ La segunda línea de la salida dice el nombre exacto de la plantilla. Míralo.
 - Cada conversación de marketing **se cobra**.
 - Un número nuevo arranca limitado a 1.000 conversaciones únicas cada 24 horas.
 
+## Formatos de teléfono que acepta
+
+| En el Excel | Qué hace |
+|-------------|----------|
+| `+573023306826` | Respeta el indicativo tal cual |
+| `+51987654321` | Cualquier país, mientras traiga `+` |
+| `3042747698` | Sin `+` asume Colombia y le antepone `57` |
+| `573042747698` | Ya trae `57`, lo deja igual |
+
+Un número **con `+`** se trata como internacional: se valida solo el largo
+(10 a 15 dígitos, que es lo que permite E.164). Un número **sin `+`** se asume
+colombiano, que es lo que exportan los CRM y planillas locales.
+
+Poner un `+` delante no arregla un número corto: `+12288478` son 8 dígitos y se
+descarta como `largo_invalido`, aunque la columna de país diga "EE. UU.".
+
 ## Plantillas con imagen de cabecera
 
 Si la plantilla lleva imagen, hay que mandarla en **cada** mensaje. Dos formas,

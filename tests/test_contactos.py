@@ -41,6 +41,50 @@ def test_lo_que_no_es_movil_colombiano_se_descarta_con_su_motivo(entrada):
     assert normalizar_telefono(entrada) == (None, "no_es_movil_co")
 
 
+# --- Numeros internacionales -------------------------------------------------
+# Un telefono escrito con '+' ya trae su indicativo de pais: se respeta tal cual
+# en vez de asumir Colombia. Sin '+' se mantiene la regla colombiana, que es lo
+# que traen los Excel exportados sin formato.
+
+
+@pytest.mark.parametrize(
+    "entrada,esperado",
+    [
+        ("+573023306826", "573023306826"),      # Colombia
+        ("+51987654321", "51987654321"),        # Peru
+        ("+593995221759", "593995221759"),      # Ecuador
+        ("+50622125450", "50622125450"),        # Costa Rica
+        ("+50379323634", "50379323634"),        # El Salvador
+        ("+56942773259", "56942773259"),        # Chile
+        ("+5491123456789", "5491123456789"),    # Argentina, 13 digitos
+        ("+1 415 555 0123", "14155550123"),     # EE.UU. con espacios
+    ],
+)
+def test_un_numero_con_indicativo_se_respeta_tal_cual(entrada, esperado):
+    assert normalizar_telefono(entrada) == (esperado, "")
+
+
+@pytest.mark.parametrize(
+    "entrada",
+    [
+        "+12288478",     # el fijo (1) 2288478 de Bogota con un '+' delante
+        "+52164753",     # colombiano truncado, etiquetado como Mexico
+        "+575970353",    # colombiano incompleto, 9 digitos
+        "+95555555",     # relleno
+    ],
+)
+def test_un_indicativo_no_arregla_un_numero_demasiado_corto(entrada):
+    assert normalizar_telefono(entrada) == (None, "largo_invalido")
+
+
+def test_rechaza_lo_que_pasa_del_maximo_de_e164():
+    assert normalizar_telefono("+1234567890123456") == (None, "largo_invalido")
+
+
+def test_un_mas_suelto_es_basura():
+    assert normalizar_telefono("+") == (None, "basura")
+
+
 from src.contactos import normalizar_nombre
 
 
