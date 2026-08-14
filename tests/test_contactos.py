@@ -203,3 +203,18 @@ def test_avisa_claro_si_falta_una_columna(tmp_path):
         leer_contactos(ruta)
 
     assert "Teléfono" in str(error.value)
+
+
+def test_suelta_el_archivo_aunque_falle_a_medias(tmp_path):
+    # openpyxl en modo read_only abre el XML de la hoja como un stream aparte.
+    # Si salimos antes de agotar el generador, ese stream queda abierto y en
+    # Windows el archivo no se puede borrar ni reemplazar.
+    import os
+
+    ruta = _crear_excel(tmp_path, [("Ana", "e@x.com")], encabezados=("Nombre", "Email"))
+
+    with pytest.raises(ValueError):
+        leer_contactos(ruta)
+
+    os.unlink(ruta)          # falla con PermissionError si quedo bloqueado
+    assert not os.path.exists(ruta)

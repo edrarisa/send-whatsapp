@@ -1,6 +1,6 @@
 # Despliegue en Coolify (o docker compose a secas).
 #
-# El contenedor no envia nada al arrancar: se queda vivo y el envio se dispara
+# El enviador no envia nada al arrancar: se queda vivo y el envio se dispara
 # como tarea programada. Asi se controla CUANDO sale la campana, en vez de que
 # se dispare sola en cada redespliegue.
 #
@@ -23,6 +23,32 @@ services:
     volumes:
       # Persistente a proposito. Si esto fuera efimero, cada redespliegue
       # borraria el log y la siguiente corrida reenviaria a TODA la lista.
+      - datos:/datos
+
+  # Sube la lista de contactos y nada mas.
+  #
+  # Fijate en lo que NO tiene: ni WHATSAPP_TOKEN ni WHATSAPP_PHONE_NUMBER_ID.
+  # Aunque alguien entre al panel, no puede enviar mensajes ni gastar dinero.
+  panel:
+    build: .
+    container_name: send-whatsapp-panel
+    restart: unless-stopped
+
+    # El servidor de desarrollo de Flask no debe exponerse a internet.
+    command: >
+      gunicorn --bind 0.0.0.0:8000 --workers 1 --timeout 120
+      "src.panel:crear_app()"
+
+    environment:
+      TZ: America/Bogota
+      PANEL_PASSWORD_HASH: ${PANEL_PASSWORD_HASH}
+      PANEL_SECRET_KEY: ${PANEL_SECRET_KEY}
+      PANEL_DESTINO: /datos/entrada/contactos.xlsx
+
+    ports:
+      - "8000"
+
+    volumes:
       - datos:/datos
 
 volumes:

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lista de contactos</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f4f4f5; margin: 0;
+           padding: 2rem 1rem; }
+    main { max-width: 34rem; margin: 0 auto; }
+    section { background: #fff; padding: 1.5rem; border-radius: 8px;
+              margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+    h1 { font-size: 1.2rem; margin: 0 0 1.5rem; }
+    h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em;
+         color: #71717a; margin: 0 0 .75rem; }
+    input, button { font-size: 1rem; padding: .6rem; border-radius: 6px; }
+    button { border: 0; background: #18181b; color: #fff; cursor: pointer; }
+    .aviso { padding: .75rem; border-radius: 6px; margin-bottom: 1rem;
+             font-size: .9rem; }
+    .ok { background: #f0fdf4; color: #166534; }
+    .error { background: #fef2f2; color: #991b1b; }
+    .salir { float: right; font-size: .85rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    td { padding: .3rem 0; }
+    td:last-child { text-align: right; color: #71717a; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Lista de contactos
+    <form method="post" action="/salir" class="salir">
+      <button type="submit" style="background:#e4e4e7;color:#3f3f46">Salir</button>
+    </form>
+  </h1>
+
+  {% for categoria, mensaje in get_flashed_messages(with_categories=true) %}
+    <p class="aviso {{ categoria }}">{{ mensaje }}</p>
+  {% endfor %}
+
+  <section>
+    <h2>Archivo vigente</h2>
+    {% if estado.existe %}
+      <table>
+        <tr><td>Contactos válidos</td><td>{{ estado.validos }}</td></tr>
+        <tr><td>Descartados</td><td>{{ estado.descartados }}</td></tr>
+        <tr><td>Última subida</td><td>{{ estado.fecha }}</td></tr>
+      </table>
+    {% else %}
+      <p>Todavía no hay ninguna lista cargada.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Subir una lista nueva</h2>
+    <form method="post" action="/subir" enctype="multipart/form-data">
+      <input type="file" name="archivo" accept=".xlsx" required>
+      <button type="submit">Subir</button>
+    </form>
+    <p style="font-size:.85rem;color:#71717a;margin-bottom:0">
+      Formato .xlsx, máximo 10 MB, con las columnas <b>Nombre</b> y <b>Teléfono</b>.
+      Si el archivo no sirve, la lista actual se conserva.
+    </p>
+  </section>
+</main>
+</body>
+</html>
