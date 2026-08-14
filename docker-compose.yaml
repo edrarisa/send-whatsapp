@@ -45,7 +45,10 @@ services:
       PANEL_SECRET_KEY: ${PANEL_SECRET_KEY}
       PANEL_DESTINO: /datos/entrada/contactos.xlsx
 
-    ports:
+    # 'expose' y no 'ports': el panel queda alcanzable solo desde el proxy de
+    # Coolify, que es quien pone el HTTPS. Con 'ports' se publicaria ademas en
+    # un puerto del host, accesible sin cifrado y saltandose el proxy.
+    expose:
       - "8000"
 
     volumes:
