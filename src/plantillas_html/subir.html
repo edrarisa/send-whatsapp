@@ -61,6 +61,58 @@
       Si el archivo no sirve, la lista actual se conserva.
     </p>
   </section>
+
+  <section>
+    <h2>Envío</h2>
+    <table>
+      <tr><td>Total en la lista</td><td>{{ progreso.total }}</td></tr>
+      <tr><td>Enviados</td><td>{{ progreso.enviados }}</td></tr>
+      <tr><td>Pendientes</td><td><b>{{ progreso.pendientes }}</b></td></tr>
+      <tr><td>Fallidos</td><td>{{ progreso.fallidos }}</td></tr>
+    </table>
+
+    {% if ordenes.en_curso %}
+      <p class="aviso ok" style="margin-top:1rem">
+        Envío en marcha desde {{ ordenes.en_curso.iniciada }}.
+        Recarga la página para ver el avance.
+      </p>
+    {% elif ordenes.solicitud %}
+      <p class="aviso ok" style="margin-top:1rem">
+        Envío solicitado. Arranca en unos segundos.
+      </p>
+    {% elif progreso.pendientes > 0 %}
+      <form method="post" action="/enviar" style="margin-top:1rem">
+        <p style="font-size:.9rem;color:#71717a">
+          Para lanzar el envío, escribe <b>{{ progreso.pendientes }}</b> y confirma.
+          Se enviará por tandas según el tope configurado.
+        </p>
+        <input type="text" name="confirmacion" inputmode="numeric"
+               placeholder="{{ progreso.pendientes }}" required style="width:8rem">
+        <button type="submit">Lanzar envío</button>
+      </form>
+    {% else %}
+      <p style="margin-top:1rem">No hay contactos pendientes.</p>
+    {% endif %}
+
+    {% if ordenes.ultima %}
+      <h2 style="margin-top:1.5rem">Última corrida</h2>
+      <p style="font-size:.85rem;color:#71717a">
+        {{ ordenes.ultima.terminada }} —
+        {{ "correcta" if ordenes.ultima.exito else "con errores" }}
+      </p>
+      <pre style="font-size:.75rem;background:#fafafa;padding:.75rem;
+                  border-radius:6px;overflow-x:auto;max-height:12rem">{{ ordenes.ultima.detalle[-1200:] }}</pre>
+    {% endif %}
+
+    {% if progreso.errores %}
+      <h2 style="margin-top:1.5rem">Errores</h2>
+      <table>
+        {% for e in progreso.errores %}
+          <tr><td>{{ e.nombre }}</td><td>{{ e.error }}</td></tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+  </section>
 </main>
 </body>
 </html>

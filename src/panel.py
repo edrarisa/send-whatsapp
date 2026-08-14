@@ -22,6 +22,10 @@ from werkzeug.security import check_password_hash
 
 from src.contactos import leer_contactos
 from src.intentos import ControlIntentos
+from src.ordenes import YaHayUnEnvio
+from src.ordenes import estado as estado_ordenes
+from src.ordenes import solicitar
+from src.progreso import resumen
 from src.subida import ArchivoRechazado, ListaInvalida, guardar_lista, validar_archivo
 
 CARPETA_PLANTILLAS = os.path.join(os.path.dirname(__file__), "plantillas_html")
@@ -59,6 +63,8 @@ def crear_app(config=None):
         "PANEL_PASSWORD_HASH": os.environ.get("PANEL_PASSWORD_HASH", ""),
         "PANEL_SECRET_KEY": os.environ.get("PANEL_SECRET_KEY", ""),
         "PANEL_DESTINO": os.environ.get("PANEL_DESTINO", "/datos/entrada/contactos.xlsx"),
+        "PANEL_LOG": os.environ.get("PANEL_LOG", "/datos/logs/envios.csv"),
+        "PANEL_ORDENES": os.environ.get("PANEL_ORDENES", "/datos/ordenes"),
         "PANEL_COOKIE_SEGURA": os.environ.get("PANEL_COOKIE_SEGURA", "1") == "1",
     }
     ajustes.update(config or {})
@@ -73,6 +79,8 @@ def crear_app(config=None):
         MAX_CONTENT_LENGTH=11 * 1024 * 1024,
         PANEL_PASSWORD_HASH=leer_hash(ajustes["PANEL_PASSWORD_HASH"]),
         PANEL_DESTINO=ajustes["PANEL_DESTINO"],
+        PANEL_LOG=ajustes["PANEL_LOG"],
+        PANEL_ORDENES=ajustes["PANEL_ORDENES"],
     )
 
     control = ControlIntentos()
@@ -122,7 +130,12 @@ def crear_app(config=None):
     def portada():
         if not hay_sesion():
             return redirect(url_for("mostrar_login"))
-        return render_template("subir.html", estado=_estado(app.config["PANEL_DESTINO"]))
+        return render_template(
+            "subir.html",
+            estado=_estado(app.config["PANEL_DESTINO"]),
+            progreso=resumen(app.config["PANEL_LOG"], app.config["PANEL_DESTINO"]),
+            ordenes=estado_ordenes(app.config["PANEL_ORDENES"]),
+        )
 
     @app.post("/subir")
     def subir():
@@ -145,6 +158,40 @@ def crear_app(config=None):
         if resumen.descartados:
             mensaje += f", {resumen.descartados} descartados ({detalle})"
         flash(mensaje, "ok")
+        return redirect(url_for("portada"))
+
+    @app.post("/enviar")
+    def pedir_envio():
+        if not hay_sesion():
+            return redirect(url_for("mostrar_login"))
+
+        progreso = resumen(app.config["PANEL_LOG"], app.config["PANEL_DESTINO"])
+        pendientes = progreso["pendientes"]
+
+        if pendientes == 0:
+            flash("No hay contactos pendientes de envío.", "error")
+            return redirect(url_for("portada"))
+
+        # Escribir el numero exacto es la barrera contra el click accidental:
+        # un envio cuesta dinero y no se puede deshacer.
+        if request.form.get("confirmacion", "").strip() != str(pendientes):
+            flash(
+                f"La confirmación no coincide. Escribe {pendientes} para lanzar el envío.",
+                "error",
+            )
+            return redirect(url_for("portada"))
+
+        try:
+            solicitar(app.config["PANEL_ORDENES"], pedidos=pendientes)
+        except YaHayUnEnvio:
+            flash("Ya hay un envío pendiente o en marcha.", "error")
+            return redirect(url_for("portada"))
+
+        flash(
+            f"Envío solicitado para {pendientes} contactos. "
+            "Arranca en unos segundos; recarga la página para ver el avance.",
+            "ok",
+        )
         return redirect(url_for("portada"))
 
     @app.errorhandler(413)

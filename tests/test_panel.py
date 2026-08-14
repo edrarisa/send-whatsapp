@@ -16,6 +16,8 @@ def app(tmp_path):
         "PANEL_PASSWORD_HASH": generate_password_hash(CLAVE),
         "PANEL_SECRET_KEY": "para-pruebas",
         "PANEL_DESTINO": str(tmp_path / "entrada" / "contactos.xlsx"),
+        "PANEL_LOG": str(tmp_path / "logs" / "envios.csv"),
+        "PANEL_ORDENES": str(tmp_path / "ordenes"),
         "PANEL_COOKIE_SEGURA": False,
     })
 
@@ -274,3 +276,78 @@ def test_la_portada_muestra_el_estado_de_la_lista(cliente):
 
     assert "Contactos válidos" in texto
     assert ">2<" in texto
+
+
+# --- Botón de envío ----------------------------------------------------------
+
+from src.ordenes import estado as estado_ordenes
+
+
+def _subir_lista(cliente, filas=None):
+    filas = filas or [("Ana", "a@x.com", "+573001234567"),
+                      ("Luis", "l@x.com", "+573009876543")]
+    return cliente.post(
+        "/subir",
+        data={"archivo": (_excel(filas), "contactos.xlsx")},
+        content_type="multipart/form-data",
+        follow_redirects=True,
+    )
+
+
+def test_sin_sesion_no_se_puede_pedir_un_envio(cliente):
+    respuesta = cliente.post("/enviar", data={"confirmacion": "2"})
+
+    assert respuesta.status_code == 302
+    assert "/login" in respuesta.headers["Location"]
+
+
+def test_la_portada_muestra_el_progreso(cliente):
+    _entrar(cliente)
+    _subir_lista(cliente)
+
+    texto = cliente.get("/").get_data(as_text=True)
+
+    assert "Pendientes" in texto
+
+
+def test_pedir_un_envio_deja_la_orden(cliente, app):
+    _entrar(cliente)
+    _subir_lista(cliente)
+
+    cliente.post("/enviar", data={"confirmacion": "2"}, follow_redirects=True)
+
+    assert estado_ordenes(app.config["PANEL_ORDENES"])["solicitud"] is not None
+
+
+def test_la_confirmacion_tiene_que_coincidir(cliente, app):
+    # Escribir un numero distinto al de pendientes no lanza nada: evita que un
+    # click accidental mande mil mensajes.
+    _entrar(cliente)
+    _subir_lista(cliente)
+
+    respuesta = cliente.post("/enviar", data={"confirmacion": "99"},
+                             follow_redirects=True)
+
+    assert "no coincide" in respuesta.get_data(as_text=True).lower()
+    assert estado_ordenes(app.config["PANEL_ORDENES"])["solicitud"] is None
+
+
+def test_no_se_puede_pedir_dos_envios_a_la_vez(cliente, app):
+    _entrar(cliente)
+    _subir_lista(cliente)
+    cliente.post("/enviar", data={"confirmacion": "2"})
+
+    respuesta = cliente.post("/enviar", data={"confirmacion": "2"},
+                             follow_redirects=True)
+
+    assert "ya hay un envío" in respuesta.get_data(as_text=True).lower()
+
+
+def test_sin_pendientes_no_se_puede_pedir(cliente, app):
+    _entrar(cliente)
+
+    respuesta = cliente.post("/enviar", data={"confirmacion": "0"},
+                             follow_redirects=True)
+
+    assert "no hay contactos" in respuesta.get_data(as_text=True).lower()
+    assert estado_ordenes(app.config["PANEL_ORDENES"])["solicitud"] is None
