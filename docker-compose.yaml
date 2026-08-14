@@ -1,0 +1,29 @@
+# Despliegue en Coolify (o docker compose a secas).
+#
+# El contenedor no envia nada al arrancar: se queda vivo y el envio se dispara
+# como tarea programada. Asi se controla CUANDO sale la campana, en vez de que
+# se dispare sola en cada redespliegue.
+#
+#   docker compose exec enviador python enviar.py --config /datos/campana.json --dry-run
+#
+services:
+  enviador:
+    build: .
+    container_name: send-whatsapp
+    restart: unless-stopped
+
+    environment:
+      TZ: America/Bogota
+      # Estas se configuran en el panel de Coolify, no aqui.
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
+      WHATSAPP_WABA_ID: ${WHATSAPP_WABA_ID}
+      GRAPH_API_VERSION: ${GRAPH_API_VERSION:-v21.0}
+
+    volumes:
+      # Persistente a proposito. Si esto fuera efimero, cada redespliegue
+      # borraria el log y la siguiente corrida reenviaria a TODA la lista.
+      - datos:/datos
+
+volumes:
+  datos:

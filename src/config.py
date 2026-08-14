@@ -61,6 +61,32 @@ class Config:
     envio: ConfigEnvio
 
 
+def leer_entorno(entorno_sistema=None, ruta_env=".env"):
+    """Combina el archivo .env con las variables de entorno reales.
+
+    En una maquina de trabajo los secretos viven en un `.env`. En un contenedor
+    no hay archivo: los inyecta el orquestador como variables de entorno. Esto
+    soporta las dos formas sin que el usuario tenga que elegir.
+
+    Gana lo que venga del sistema, porque es lo que el operador configuro para
+    ese despliegue. Se ignoran las variables vacias: docker-compose y varios
+    paneles exportan como cadena vacia lo que no esta definido, y sin filtrarlas
+    pisarian el .env con nada.
+    """
+    from dotenv import dotenv_values
+
+    if entorno_sistema is None:
+        entorno_sistema = os.environ
+
+    combinado = dict(dotenv_values(ruta_env))
+    combinado.update({
+        clave: valor
+        for clave, valor in entorno_sistema.items()
+        if valor not in (None, "")
+    })
+    return combinado
+
+
 def cargar_config(ruta_campana, entorno):
     """Lee el JSON de campana y las variables de entorno. Devuelve un Config.
 

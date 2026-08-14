@@ -1,0 +1,38 @@
+# CRITICO: nada de esto puede quedar dentro de la imagen.
+# Las capas de una imagen Docker son legibles por cualquiera que la tenga,
+# aunque el archivo se borre en una capa posterior.
+
+# Secretos
+.env
+.env.*
+!.env.example
+
+# Datos personales de contactos (Ley 1581 / habeas data)
+*.xlsx
+*.xls
+*.csv
+*.bak
+~$*
+
+# IDs privados de Meta
+DATOS-META.md
+
+# Configuraciones reales de campana (van en el volumen, no en la imagen)
+campana.json
+campana-*.json
+!campana.example.json
+
+# Registros de envio
+logs/
+
+# Basura de desarrollo
+.git/
+.gitignore
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.vscode/
+.idea/
+docs/

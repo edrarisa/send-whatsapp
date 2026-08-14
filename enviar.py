@@ -13,9 +13,8 @@ import sys
 import time
 
 import requests
-from dotenv import dotenv_values
 
-from src.config import ConfigInvalida, cargar_config
+from src.config import ConfigInvalida, cargar_config, leer_entorno
 from src.contactos import leer_contactos
 from src.marcado import ExcelBloqueado, marcar_excel
 from src.registro import ENVIADO, FALLO, Registro
@@ -48,8 +47,7 @@ def main(argv=None):
     args = parsear_argumentos(argv)
 
     try:
-        entorno = {**dotenv_values(".env")}
-        config = cargar_config(args.config, entorno)
+        config = cargar_config(args.config, leer_entorno())
     except ConfigInvalida as error:
         print(f"ERROR DE CONFIGURACION: {error}")
         return 1
