@@ -71,10 +71,10 @@ La segunda línea de la salida dice el nombre exacto de la plantilla. Míralo.
 
 | En el Excel | Qué hace |
 |-------------|----------|
-| `+573023306826` | Respeta el indicativo tal cual |
+| `+573009876543` | Respeta el indicativo tal cual |
 | `+51987654321` | Cualquier país, mientras traiga `+` |
-| `3042747698` | Sin `+` asume Colombia y le antepone `57` |
-| `573042747698` | Ya trae `57`, lo deja igual |
+| `3001234567` | Sin `+` asume Colombia y le antepone `57` |
+| `573001234567` | Ya trae `57`, lo deja igual |
 
 Un número **con `+`** se trata como internacional: se valida solo el largo
 (10 a 15 dígitos, que es lo que permite E.164). Un número **sin `+`** se asume

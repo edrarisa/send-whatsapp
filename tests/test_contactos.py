@@ -50,7 +50,7 @@ def test_lo_que_no_es_movil_colombiano_se_descarta_con_su_motivo(entrada):
 @pytest.mark.parametrize(
     "entrada,esperado",
     [
-        ("+573023306826", "573023306826"),      # Colombia
+        ("+573009876543", "573009876543"),      # Colombia
         ("+51987654321", "51987654321"),        # Peru
         ("+593995221759", "593995221759"),      # Ecuador
         ("+50622125450", "50622125450"),        # Costa Rica
