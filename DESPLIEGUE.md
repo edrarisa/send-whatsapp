@@ -255,19 +255,62 @@ y verifica que la imagen quedó bien:
 python -m pytest -q          # debe decir 97 passed
 ```
 
-### 4. Meter los datos en el volumen
+### 4. El nombre real del contenedor
 
-El volumen `/datos` es persistente y **está vacío** al principio. Necesita dos
-cosas. Desde tu máquina:
+⚠️ **Coolify ignora el `container_name` del compose** y genera uno propio, del
+estilo `enviador-jgy62ybgxvphmjo7jaf4kiuk-203755639440`. Aparece en el log del
+despliegue, o lo encuentras así en el servidor:
 
 ```bash
-docker cp campana.json    send-whatsapp:/datos/campana.json
-docker cp contactos.xlsx  send-whatsapp:/datos/entrada/contactos.xlsx
+docker ps --filter "name=enviador" --format "{{.Names}}"
 ```
 
-O crea `campana.json` directamente desde la terminal de Coolify con `nano`.
+Guárdalo en una variable para no repetirlo:
 
-### 5. `campana.json` con rutas del contenedor
+```bash
+CONTENEDOR=$(docker ps --filter "name=enviador" --format "{{.Names}}" | head -1)
+```
+
+La forma más cómoda de evitarlo todo es usar la pestaña **Terminal** de Coolify,
+que ya te deja dentro del contenedor.
+
+### 5. Meter los datos en el volumen
+
+El volumen `/datos` es persistente y **está vacío** al principio.
+
+**`campana.json`** — desde la terminal de Coolify, sin salir del contenedor:
+
+```bash
+cat > /datos/campana.json <<'FIN'
+{
+  "excel": { "ruta": "/datos/entrada/contactos.xlsx",
+             "columna_nombre": "Nombre", "columna_telefono": "Teléfono" },
+  "plantilla": {
+    "nombre": "conversatorio_datos_agosto_2026",
+    "idioma": "es",
+    "parametros_cuerpo": [{ "origen": "nombre_normalizado" }],
+    "imagen_cabecera": "/app/Conversatorio-LinkedIn-MYQ-2026.jpg",
+    "parametro_boton_url": null
+  },
+  "envio": { "segundos_entre_mensajes": 3, "jitter": 0.2, "tope_diario": 900,
+             "nombre_por_defecto": "Hola", "ruta_log": "/datos/logs/envios.csv" }
+}
+FIN
+```
+
+**El Excel** es binario, así que va en dos saltos — primero al servidor, luego
+al contenedor:
+
+```bash
+# 1. Desde tu maquina
+scp contactos.xlsx usuario@TU_IP:/tmp/contactos.xlsx
+
+# 2. Ya en el servidor
+docker cp /tmp/contactos.xlsx $CONTENEDOR:/datos/entrada/contactos.xlsx
+rm /tmp/contactos.xlsx        # no dejar datos personales sueltos en /tmp
+```
+
+### 6. `campana.json` con rutas del contenedor
 
 ```json
 {
@@ -296,24 +339,30 @@ O crea `campana.json` directamente desde la terminal de Coolify con `nano`.
 La imagen del banner sí viaja dentro de la imagen Docker (`/app/`), porque está
 en el repositorio. Los datos van en `/datos/`, que es el volumen.
 
-### 6. Enviar
+### 7. Enviar
 
-Siempre en este orden:
+Desde la **terminal de Coolify** (ya estás dentro del contenedor), siempre en
+este orden:
 
 ```bash
 # Simulacion, no envia nada
-docker exec send-whatsapp python enviar.py --config /datos/campana.json --dry-run
+python enviar.py --config /datos/campana.json --dry-run
 
 # Uno solo, para verificar en el celular
-docker exec send-whatsapp python enviar.py --config /datos/campana.json --solo 57XXXXXXXXXX
+python enviar.py --config /datos/campana.json --solo 57XXXXXXXXXX
 
 # Campana completa
-docker exec send-whatsapp python enviar.py --config /datos/campana.json
+python enviar.py --config /datos/campana.json
 ```
 
-Desde Coolify también puedes hacerlo abriendo la terminal del contenedor.
+Desde el servidor por SSH es lo mismo, anteponiendo `docker exec $CONTENEDOR`.
 
-### 7. Programarlo (opcional)
+⚠️ Un envío completo tarda ~45 minutos. Si lo lanzas desde la terminal web de
+Coolify y cierras la pestaña, el proceso muere. Para corridas largas usa SSH
+con `tmux`, o la tarea programada. Si se interrumpe, relanzas y continúa donde
+quedó.
+
+### 8. Programarlo (opcional)
 
 En el recurso → **Scheduled Tasks**:
 
