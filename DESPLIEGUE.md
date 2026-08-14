@@ -450,7 +450,41 @@ Sin HTTPS la contraseña viaja en claro y la cookie de sesión (marcada como
 | Rechazar un archivo malo sin tocar el anterior | Editar la campaña |
 
 Sus variables de entorno no incluyen `WHATSAPP_TOKEN`. Aunque alguien entre al
-panel, no puede gastar dinero ni llevarse la lista.
+panel, no puede llevarse la lista ni cambiar el mensaje.
+
+### El botón de envío
+
+El panel **no envía**: deja una solicitud en `/datos/ordenes/solicitud.json`.
+El contenedor `enviador` —el único con el token— la ve en unos segundos y
+ejecuta la corrida.
+
+```
+panel  --escribe-->  /datos/ordenes/solicitud.json
+                              |
+                     el vigilante lo recoge
+                              v
+                        ejecuta enviar.py
+```
+
+Por eso el panel puede pedir un envío sin manejar credenciales. Lo máximo que
+consigue quien lo comprometa es disparar *tu* campaña a *tu* lista: no puede
+escribir a otros números ni cambiar el contenido.
+
+Para lanzar hay que **escribir el número exacto de pendientes**. Un click
+accidental no manda nada.
+
+Solo se admite un envío a la vez. Si el proceso revienta, la orden se archiva
+como fallida en vez de quedarse colgada bloqueando los siguientes.
+
+La página muestra enviados, pendientes, fallidos y el detalle de la última
+corrida — pero **nunca teléfonos**, para que entrar al panel no equivalga a
+descargarse la lista.
+
+Seguir lanzando por terminal funciona igual que antes:
+
+```bash
+python enviar.py --config /datos/campana.json
+```
 
 ### Probarlo en local
 

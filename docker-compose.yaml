@@ -12,6 +12,10 @@ services:
     container_name: send-whatsapp
     restart: unless-stopped
 
+    # Vigila las ordenes que deja el panel en el volumen compartido. Lanzarlo
+    # a mano con 'docker exec ... python enviar.py' sigue funcionando igual.
+    command: python vigilante.py
+
     environment:
       TZ: America/Bogota
       # Estas se configuran en el panel de Coolify, no aqui.
@@ -19,6 +23,8 @@ services:
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
       WHATSAPP_WABA_ID: ${WHATSAPP_WABA_ID}
       GRAPH_API_VERSION: ${GRAPH_API_VERSION:-v21.0}
+      RUTA_ORDENES: /datos/ordenes
+      RUTA_CAMPANA: /datos/campana.json
 
     volumes:
       # Persistente a proposito. Si esto fuera efimero, cada redespliegue
@@ -44,6 +50,8 @@ services:
       PANEL_PASSWORD_HASH: ${PANEL_PASSWORD_HASH}
       PANEL_SECRET_KEY: ${PANEL_SECRET_KEY}
       PANEL_DESTINO: /datos/entrada/contactos.xlsx
+      PANEL_LOG: /datos/logs/envios.csv
+      PANEL_ORDENES: /datos/ordenes
 
     # 'expose' y no 'ports': el panel queda alcanzable solo desde el proxy de
     # Coolify, que es quien pone el HTTPS. Con 'ports' se publicaria ademas en
