@@ -41,6 +41,85 @@ def _entrar(cliente, clave=CLAVE):
     return cliente.post("/login", data={"clave": clave}, follow_redirects=False)
 
 
+# --- El hash lleva '$' y eso rompe docker-compose ----------------------------
+# Un hash de werkzeug tiene la forma "scrypt:32768:8:1$sal$hash". Docker Compose
+# interpreta cada $ como una referencia a variable, no la encuentra y la
+# sustituye por vacio: el hash llega mutilado al contenedor. Por eso se acepta
+# tambien en base64, que no tiene caracteres conflictivos.
+
+import base64
+
+from src.panel import leer_hash
+
+
+def test_un_hash_normal_se_usa_tal_cual():
+    hash_crudo = generate_password_hash("x")
+
+    assert leer_hash(hash_crudo) == hash_crudo
+
+
+def test_un_hash_en_base64_se_decodifica():
+    hash_crudo = generate_password_hash("x")
+    codificado = base64.b64encode(hash_crudo.encode()).decode()
+
+    assert leer_hash(codificado) == hash_crudo
+
+
+def test_un_valor_vacio_se_queda_vacio():
+    assert leer_hash("") == ""
+    assert leer_hash(None) == ""
+
+
+def test_se_puede_entrar_con_el_hash_en_base64(tmp_path):
+    codificado = base64.b64encode(generate_password_hash(CLAVE).encode()).decode()
+    app = crear_app({
+        "PANEL_PASSWORD_HASH": codificado,
+        "PANEL_SECRET_KEY": "para-pruebas",
+        "PANEL_DESTINO": str(tmp_path / "contactos.xlsx"),
+        "PANEL_COOKIE_SEGURA": False,
+    })
+    cliente = app.test_client()
+
+    cliente.post("/login", data={"clave": CLAVE})
+
+    assert cliente.get("/").status_code == 200
+
+
+def test_sin_hash_configurado_avisa_en_vez_de_reventar(tmp_path):
+    # Es justo lo que pasa si docker-compose se comio el hash: el panel debe
+    # decir que esta mal configurado, no devolver un error 500.
+    app = crear_app({
+        "PANEL_PASSWORD_HASH": "",
+        "PANEL_SECRET_KEY": "para-pruebas",
+        "PANEL_DESTINO": str(tmp_path / "contactos.xlsx"),
+        "PANEL_COOKIE_SEGURA": False,
+    })
+    cliente = app.test_client()
+
+    respuesta = cliente.post("/login", data={"clave": "loquesea"},
+                             follow_redirects=True)
+
+    assert "sin configurar" in respuesta.get_data(as_text=True).lower()
+    assert cliente.get("/").status_code == 302
+
+
+def test_un_hash_mutilado_avisa_en_vez_de_reventar(tmp_path):
+    # "scrypt:32768:8:1$$" es exactamente lo que queda tras la sustitucion.
+    app = crear_app({
+        "PANEL_PASSWORD_HASH": "scrypt:32768:8:1$$",
+        "PANEL_SECRET_KEY": "para-pruebas",
+        "PANEL_DESTINO": str(tmp_path / "contactos.xlsx"),
+        "PANEL_COOKIE_SEGURA": False,
+    })
+    cliente = app.test_client()
+
+    respuesta = cliente.post("/login", data={"clave": "loquesea"},
+                             follow_redirects=True)
+
+    assert respuesta.status_code == 200
+    assert cliente.get("/").status_code == 302
+
+
 def test_sin_sesion_la_portada_manda_al_login(cliente):
     respuesta = cliente.get("/")
 

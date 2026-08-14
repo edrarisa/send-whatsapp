@@ -398,24 +398,37 @@ El servicio `panel` sirve una página web para actualizar la lista sin `scp`.
 En tu máquina, con el entorno del proyecto:
 
 ```bash
-python -c "from werkzeug.security import generate_password_hash as h; print(h('LA-CONTRASENA-QUE-QUIERAS'))"
+# PANEL_PASSWORD_HASH  (en base64, ver el aviso de abajo)
+python -c "import base64; from werkzeug.security import generate_password_hash as h; print(base64.b64encode(h('LA-CONTRASENA-QUE-QUIERAS').encode()).decode())"
+
+# PANEL_SECRET_KEY
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-El primero es `PANEL_PASSWORD_HASH`, el segundo `PANEL_SECRET_KEY`. Añádelos
-como variables de entorno del recurso en Coolify.
+Añádelos como variables de entorno del recurso en Coolify.
 
-El hash tiene esta forma, unos 160 caracteres:
+#### ⚠️ Por qué en base64
+
+Un hash de werkzeug tiene esta forma:
 
 ```
-scrypt:32768:8:1$yTvy4wzcveP6YTR5$cb60c6d8334b26478be67adf1760b9f2...
+scrypt:32768:8:1$vAK8nmayfXlHdFya$dca94c43f585cbee...
+                └─ aqui empieza el problema
 ```
 
-Cópialo entero, incluido el `scrypt:` del principio. Cambia cada vez que lo
-generas aunque uses la misma contraseña —la sal es aleatoria— y eso es normal.
+**Docker Compose interpreta cada `$` como una referencia a variable.** No la
+encuentra, la sustituye por vacío, y el hash llega mutilado al contenedor. En
+el log del despliegue se ve así:
+
+```
+The "vAK8nmayfXlHdFya" variable is not set. Defaulting to a blank string.
+```
+
+En base64 no hay `$`, así que el valor viaja intacto. El panel acepta las dos
+formas: si detecta un `$` lo usa tal cual, y si no, lo decodifica.
 
 ⚠️ **La contraseña en claro no se guarda en ningún sitio.** Solo el hash viaja
-al servidor; si la olvidas, generas otro hash.
+al servidor; si la olvidas, generas otro.
 
 ⚠️ **Genéralo en tu máquina, no dentro del contenedor**, y no lo pegues en
 chats ni capturas de pantalla.

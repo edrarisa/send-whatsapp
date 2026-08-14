@@ -4,6 +4,8 @@ Solo sube. No envia mensajes, no muestra telefonos y no recibe el token de
 WhatsApp: si alguien entra, no se lleva la lista ni puede gastar dinero.
 """
 
+import base64
+import binascii
 import os
 from datetime import datetime, timezone
 
@@ -23,6 +25,30 @@ from src.intentos import ControlIntentos
 from src.subida import ArchivoRechazado, ListaInvalida, guardar_lista, validar_archivo
 
 CARPETA_PLANTILLAS = os.path.join(os.path.dirname(__file__), "plantillas_html")
+
+
+def leer_hash(valor):
+    """Devuelve el hash de la contrasena, venga en claro o en base64.
+
+    Un hash de werkzeug es "scrypt:32768:8:1$sal$hash". Docker Compose trata
+    cada $ como referencia a una variable, no la encuentra y la sustituye por
+    vacio, asi que el hash llega mutilado al contenedor. Aceptarlo tambien en
+    base64 -que no tiene caracteres conflictivos- evita ese problema sin pedirle
+    al usuario que escape nada.
+    """
+    if not valor:
+        return ""
+
+    texto = str(valor).strip()
+    if "$" in texto:
+        return texto            # ya viene en claro
+
+    try:
+        decodificado = base64.b64decode(texto, validate=True).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError, ValueError):
+        return texto            # no era base64; que falle la comprobacion
+
+    return decodificado if "$" in decodificado else texto
 
 
 def crear_app(config=None):
@@ -45,7 +71,7 @@ def crear_app(config=None):
         # Algo por encima del limite real, para poder dar un mensaje propio en
         # vez del 413 seco de Werkzeug.
         MAX_CONTENT_LENGTH=11 * 1024 * 1024,
-        PANEL_PASSWORD_HASH=ajustes["PANEL_PASSWORD_HASH"],
+        PANEL_PASSWORD_HASH=leer_hash(ajustes["PANEL_PASSWORD_HASH"]),
         PANEL_DESTINO=ajustes["PANEL_DESTINO"],
     )
 
@@ -60,14 +86,25 @@ def crear_app(config=None):
 
     @app.post("/login")
     def entrar():
+        guardado = app.config["PANEL_PASSWORD_HASH"]
+        if not guardado:
+            # Pasa si docker-compose se comio el hash al interpretar sus '$'.
+            flash("El panel está sin configurar: falta PANEL_PASSWORD_HASH.")
+            return redirect(url_for("mostrar_login"))
+
         espera = control.segundos_de_espera()
         if espera:
             flash(f"Demasiados intentos. Espera {espera} segundos.")
             return redirect(url_for("mostrar_login"))
 
-        if check_password_hash(
-            app.config["PANEL_PASSWORD_HASH"], request.form.get("clave", "")
-        ):
+        try:
+            correcta = check_password_hash(guardado, request.form.get("clave", ""))
+        except (ValueError, TypeError):
+            # Un hash malformado no debe tumbar el panel con un error 500.
+            flash("El hash de la contraseña está mal formado. Revisa la configuración.")
+            return redirect(url_for("mostrar_login"))
+
+        if correcta:
             control.registrar_acierto()
             session["dentro"] = True
             return redirect(url_for("portada"))
