@@ -91,6 +91,8 @@ y al arrancar salta a quien ya figura como `enviado`. Eso significa:
 
 ## Desplegar en un servidor
 
+👉 **Guía completa paso a paso: [DESPLIEGUE.md](DESPLIEGUE.md)**
+
 Tres cosas que hay que resolver antes de dejarlo corriendo solo:
 
 **1. El log tiene que sobrevivir a los despliegues.** Por defecto vive en
