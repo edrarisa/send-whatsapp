@@ -389,6 +389,59 @@ imagen son legibles aunque el archivo se borre después.
 
 ---
 
+## El panel de subida
+
+El servicio `panel` sirve una página web para actualizar la lista sin `scp`.
+
+### Generar los secretos
+
+En tu máquina, con el entorno del proyecto:
+
+```bash
+python -c "from werkzeug.security import generate_password_hash as h; print(h('LA-CONTRASENA-QUE-QUIERAS'))"
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+El primero es `PANEL_PASSWORD_HASH`, el segundo `PANEL_SECRET_KEY`. Añádelos
+como variables de entorno del recurso en Coolify.
+
+⚠️ **La contraseña en claro no se guarda en ningún sitio.** Solo el hash viaja
+al servidor; si la olvidas, generas otro hash.
+
+### Exponerlo
+
+A diferencia del `enviador`, el panel **sí** necesita dominio y HTTPS:
+Coolify → servicio `panel` → **Domains → Generate Domain**.
+
+Sin HTTPS la contraseña viaja en claro y la cookie de sesión (marcada como
+`Secure`) no se envía, así que no podrías entrar.
+
+### Qué puede y qué no
+
+| Puede | No puede |
+|-------|----------|
+| Subir un `.xlsx` y validarlo | Enviar mensajes |
+| Mostrar cuántos contactos hay | Ver o descargar teléfonos |
+| Rechazar un archivo malo sin tocar el anterior | Editar la campaña |
+
+Sus variables de entorno no incluyen `WHATSAPP_TOKEN`. Aunque alguien entre al
+panel, no puede gastar dinero ni llevarse la lista.
+
+### Probarlo en local
+
+```bash
+set PANEL_PASSWORD_HASH=<el hash generado arriba>
+set PANEL_SECRET_KEY=cualquier-cosa-para-probar
+set PANEL_DESTINO=logs/prueba-panel.xlsx
+set PANEL_COOKIE_SEGURA=0
+python -c "from src.panel import crear_app; crear_app().run(port=8000)"
+```
+
+`PANEL_COOKIE_SEGURA=0` es imprescindible en local: sin HTTPS, una cookie
+marcada como `Secure` no se envía y no podrías entrar.
+
+---
+
 ## Actualizar el código más adelante
 
 ```bash

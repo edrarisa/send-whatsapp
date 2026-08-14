@@ -27,6 +27,14 @@ python enviar.py                            # corrida completa
 python enviar.py --marcar                   # solo refresca el estado en el Excel
 ```
 
+## Panel para subir la lista
+
+Si el proyecto está desplegado en un servidor, hay una página web con
+contraseña para actualizar el Excel sin usar `scp`. Valida el archivo antes de
+reemplazar el vigente: si subes uno malo, la lista anterior se conserva.
+
+Ver [DESPLIEGUE.md](DESPLIEGUE.md#el-panel-de-subida).
+
 ## Convención de los archivos de campaña
 
 ⚠️ **`campana.json` es siempre la campaña activa.** `python enviar.py` sin
