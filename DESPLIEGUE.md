@@ -405,8 +405,20 @@ python -c "import secrets; print(secrets.token_hex(32))"
 El primero es `PANEL_PASSWORD_HASH`, el segundo `PANEL_SECRET_KEY`. Añádelos
 como variables de entorno del recurso en Coolify.
 
+El hash tiene esta forma, unos 160 caracteres:
+
+```
+scrypt:32768:8:1$yTvy4wzcveP6YTR5$cb60c6d8334b26478be67adf1760b9f2...
+```
+
+Cópialo entero, incluido el `scrypt:` del principio. Cambia cada vez que lo
+generas aunque uses la misma contraseña —la sal es aleatoria— y eso es normal.
+
 ⚠️ **La contraseña en claro no se guarda en ningún sitio.** Solo el hash viaja
 al servidor; si la olvidas, generas otro hash.
+
+⚠️ **Genéralo en tu máquina, no dentro del contenedor**, y no lo pegues en
+chats ni capturas de pantalla.
 
 ### Exponerlo
 
