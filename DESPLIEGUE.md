@@ -50,7 +50,7 @@ pip install -r requirements.txt
 python -m pytest -q
 ```
 
-Debe decir `92 passed`. Si falla algo, no sigas: hay un problema de entorno.
+Debe decir `97 passed`. Si falla algo, no sigas: hay un problema de entorno.
 
 ## 4. Carpetas para los datos
 
