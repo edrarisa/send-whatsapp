@@ -130,6 +130,7 @@ def leer_contactos(
     from openpyxl import load_workbook
 
     libro = load_workbook(ruta, read_only=True, data_only=True)
+    filas = None
     try:
         pagina = libro[hoja] if hoja else libro.worksheets[0]
         filas = pagina.iter_rows(values_only=True)
@@ -193,6 +194,13 @@ def leer_contactos(
 
         return validos, descartes
     finally:
+        # En modo read_only, openpyxl abre el XML de la hoja como un stream
+        # aparte. Si salimos antes de agotar el generador -por ejemplo al
+        # detectar que falta una columna- ese stream sigue abierto aunque
+        # cerremos el libro, y en Windows el archivo queda bloqueado: no se
+        # puede borrar ni reemplazar.
+        if filas is not None:
+            filas.close()
         libro.close()
 
 
