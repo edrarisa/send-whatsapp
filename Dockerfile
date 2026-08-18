@@ -13,7 +13,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY src/ ./src/
-COPY enviar.py vigilante.py conftest.py ./
+COPY enviar.py vigilante.py preparar-diaevento.py conftest.py ./
 COPY tests/ ./tests/
 COPY Conversatorio-LinkedIn-MYQ-2026.jpg recordatorio-conversatorio-agosto.jpeg Conectate-hoy-whatsapp.jpg ./
 
