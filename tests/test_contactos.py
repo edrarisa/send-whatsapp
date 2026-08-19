@@ -218,3 +218,58 @@ def test_suelta_el_archivo_aunque_falle_a_medias(tmp_path):
 
     os.unlink(ruta)          # falla con PermissionError si quedo bloqueado
     assert not os.path.exists(ruta)
+
+
+# --- El largo tiene que cuadrar con el indicativo del pais -------------------
+# Un '+' delante no convierte una cedula en telefono. En la campana real, dos
+# numeros como "+1037578093" -una cedula colombiana con +1 delante- pasaron la
+# validacion de largo general y Meta los rechazo con el error 131009.
+
+
+@pytest.mark.parametrize(
+    "entrada,esperado",
+    [
+        ("+13055550123", "13055550123"),      # EE.UU., 11 digitos
+        ("+573001234567", "573001234567"),    # Colombia, 12
+        ("+56942773259", "56942773259"),      # Chile, 11
+        ("+51987654321", "51987654321"),      # Peru, 11
+        ("+593995221759", "593995221759"),    # Ecuador, 12
+    ],
+)
+def test_acepta_los_largos_correctos_de_cada_pais(entrada, esperado):
+    assert normalizar_telefono(entrada) == (esperado, "")
+
+
+@pytest.mark.parametrize(
+    "entrada",
+    [
+        "+1037578093",     # cedula colombiana con +1 delante
+        "+1073677361",     # idem
+        "+5694277325",     # Chile con un digito de menos
+        "+57300123456",    # Colombia con un digito de menos
+        "+5730012345678",  # Colombia con uno de mas
+    ],
+)
+def test_rechaza_los_que_no_cuadran_con_su_indicativo(entrada):
+    assert normalizar_telefono(entrada) == (None, "no_cuadra_con_el_pais")
+
+
+def test_un_indicativo_desconocido_solo_valida_el_largo_general():
+    # Si no sabemos como son los numeros de ese pais, no inventamos: basta con
+    # que este dentro del rango de E.164.
+    assert normalizar_telefono("+9711234567890") == ("9711234567890", "")
+
+
+@pytest.mark.parametrize(
+    "entrada",
+    [
+        "+525541888469",    # Mexico moderno: 52 + 10 digitos
+        "+5215541888469",   # Mexico con el "1" antiguo
+    ],
+)
+def test_mexico_acepta_sus_dos_formatos(entrada):
+    # WhatsApp dejo de exigir el "1" despues del 52 en 2019, pero siguen
+    # circulando numeros con las dos formas.
+    telefono, motivo = normalizar_telefono(entrada)
+    assert motivo == ""
+    assert telefono == entrada.lstrip("+")

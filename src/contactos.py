@@ -8,6 +8,7 @@ VACIO = "vacio"
 BASURA = "basura"
 NO_ES_MOVIL_CO = "no_es_movil_co"
 LARGO_INVALIDO = "largo_invalido"
+NO_CUADRA_CON_EL_PAIS = "no_cuadra_con_el_pais"
 DUPLICADO = "duplicado"
 
 # E.164 permite hasta 15 digitos contando el indicativo de pais. Por abajo, un
@@ -15,6 +16,39 @@ DUPLICADO = "duplicado"
 # que aparecen en las listas suelen ser fijos viejos con un '+' puesto delante.
 LARGO_MINIMO_INTERNACIONAL = 10
 LARGO_MAXIMO_INTERNACIONAL = 15
+
+# Cuantos digitos tiene un numero completo -indicativo incluido- en los paises
+# de la lista. Un '+' delante no convierte una cedula en telefono: en la campana
+# real, cuatro numeros como "+1037578093" (una cedula colombiana con +1 delante)
+# pasaron la validacion general de largo y Meta los rechazo con el error 131009.
+#
+# Solo estan los paises cuyo formato conocemos con certeza. Para el resto basta
+# el rango de E.164: preferimos dejar pasar un numero dudoso antes que descartar
+# uno bueno de un pais que no tenemos tabulado.
+LARGOS_POR_INDICATIVO = {
+    "1": {11},        # EE.UU. y Canada
+    "57": {12},       # Colombia
+    "56": {11},       # Chile
+    "51": {11},       # Peru
+    "52": {12, 13},   # Mexico: 12 desde 2019, 13 con el "1" antiguo
+    "593": {12},      # Ecuador
+    "506": {11},      # Costa Rica
+    "503": {11},      # El Salvador
+    "507": {11},      # Panama
+}
+
+
+def _cuadra_con_su_pais(digitos):
+    """El largo coincide con lo que usa ese indicativo? True si no lo sabemos.
+
+    Se prueban los indicativos de mas largo a mas corto para que "593" gane
+    sobre "59" y "5".
+    """
+    for tamano in (3, 2, 1):
+        esperados = LARGOS_POR_INDICATIVO.get(digitos[:tamano])
+        if esperados is not None:
+            return len(digitos) in esperados
+    return True
 
 
 def normalizar_telefono(valor):
@@ -44,10 +78,12 @@ def normalizar_telefono(valor):
         return None, BASURA
 
     if texto.startswith("+"):
-        if LARGO_MINIMO_INTERNACIONAL <= len(digitos) <= LARGO_MAXIMO_INTERNACIONAL:
-            return digitos, ""
-        # Poner un '+' delante no convierte un fijo de 8 digitos en internacional.
-        return None, LARGO_INVALIDO
+        if not (LARGO_MINIMO_INTERNACIONAL <= len(digitos) <= LARGO_MAXIMO_INTERNACIONAL):
+            # Poner un '+' delante no convierte un fijo de 8 digitos en internacional.
+            return None, LARGO_INVALIDO
+        if not _cuadra_con_su_pais(digitos):
+            return None, NO_CUADRA_CON_EL_PAIS
+        return digitos, ""
 
     # Sin indicativo: largos imposibles para cualquier telefono.
     if len(digitos) < 7 or len(digitos) > 13:
