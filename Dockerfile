@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src/
 COPY enviar.py vigilante.py preparar-diaevento.py conftest.py ./
 COPY tests/ ./tests/
-COPY Conversatorio-LinkedIn-MYQ-2026.jpg recordatorio-conversatorio-agosto.jpeg Conectate-hoy-whatsapp.jpg ./
+COPY Conversatorio-LinkedIn-MYQ-2026.jpg recordatorio-conversatorio-agosto.jpeg Conectate-hoy-whatsapp.jpg imagen-dama.jpeg ./
 
 # /datos es un volumen: ahi viven el log, los Excel y campana.json. Tiene que
 # sobrevivir a los redespliegues, porque el log es lo unico que impide volver
