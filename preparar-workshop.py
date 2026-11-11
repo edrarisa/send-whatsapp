@@ -27,8 +27,9 @@ CAMPANA = os.path.join(DATOS, "campana.json")
 LOG_VIGENTE = os.path.join(DATOS, "logs", "envios.csv")
 ORDENES = os.path.join(DATOS, "ordenes")
 
-PLANTILLA = "dama_week_internacional_2026"
+PLANTILLA = "dama_week_internacional_2026_v2"   # "Hola {{1}}." + el texto del workshop
 IDIOMA = "es"
+SALUDO_POR_DEFECTO = "colega"   # para quien no trae un nombre usable en el Excel
 # Viaja dentro de la imagen Docker, junto a este script: /app/workshop-dama.png
 IMAGEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "workshop-dama.png")
 RITMO = 5
@@ -108,8 +109,10 @@ with open(CAMPANA, encoding="utf-8") as archivo:
 config["_nota"] = "CAMPANA ACTIVA: Workshop DAMA Week Internacional, 20 de noviembre de 2026."
 config["plantilla"]["nombre"] = PLANTILLA
 config["plantilla"]["idioma"] = IDIOMA
-# La plantilla no tiene {{1}}: si se manda un parametro, Meta rechaza el mensaje.
-config["plantilla"]["parametros_cuerpo"] = []
+# {{1}} es el primer nombre de la columna Nombre. La plantilla tiene una sola
+# variable: mandar mas o menos parametros hace que Meta rechace el mensaje.
+config["plantilla"]["parametros_cuerpo"] = [{"origen": "nombre_normalizado"}]
+config["envio"]["nombre_por_defecto"] = SALUDO_POR_DEFECTO
 config["plantilla"]["imagen_cabecera"] = IMAGEN
 config["plantilla"]["parametro_boton_url"] = None
 config["envio"]["segundos_entre_mensajes"] = RITMO
@@ -128,7 +131,7 @@ except ConfigInvalida as error:
 
 print("[4/4] Configuracion actualizada:")
 print(f"        plantilla : {final.plantilla.nombre} ({final.plantilla.idioma})")
-print(f"        variables : {len(final.plantilla.parametros_cuerpo)}")
+print(f"        variables : {len(final.plantilla.parametros_cuerpo)} (primer nombre; si falta: '{final.envio.nombre_por_defecto}')")
 print(f"        imagen    : {final.plantilla.imagen_cabecera}")
 print(f"        ritmo     : {final.envio.segundos_entre_mensajes} s")
 print(f"        tope      : {final.envio.tope_diario}")
