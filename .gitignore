@@ -16,6 +16,8 @@ DATOS-META.md
 # --- Datos personales de contactos (Ley 1581 / habeas data) ---
 *.xlsx
 *.xls
+*.xlsm
+*.pdf
 *.csv
 *.tsv
 *.json
