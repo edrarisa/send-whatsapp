@@ -29,7 +29,8 @@ CAMPANA = os.path.join(DATOS, "campana.json")
 LOG_VIGENTE = os.path.join(DATOS, "logs", "envios.csv")
 ORDENES = os.path.join(DATOS, "ordenes")
 
-PLANTILLA = "transmisin_virtual_da_2_dama_week_internacional_2026"   # "Hola {{1}}" + link a YouTube
+# v2: misma plantilla con "continúa" corregido (la v1 no se podia editar dos veces en 24 h)
+PLANTILLA = "transmisin_virtual_da_2_dama_week_internacional_2026_v2"   # "Hola {{1}}" + link a YouTube
 IDIOMA = "es"
 SALUDO_POR_DEFECTO = "colega"   # para quien no trae un nombre usable en el Excel
 # Viaja dentro de la imagen Docker, junto a este script: /app/dama-week-dia2.png
